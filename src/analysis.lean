@@ -2,8 +2,7 @@
  These are my solutions to the katas in the Mathematical Analysis collection in Codewars (https://www.codewars.com/collections/mathematical-analysis).
 -/
 
-import data.real.basic
-import data.real.basic data.set.intervals.basic
+import data.real.basic data.set.intervals.basic algebra.geom_sum
 open classical
 attribute [instance] prop_decidable
 
@@ -165,4 +164,70 @@ begin
      rw abs_lt at h',
      cases h',
      linarith }
+end
+
+def uniform_continuous (f : ℝ → ℝ) :=
+  ∀ ε > 0, ∃ δ > 0, ∀ x y, abs (x - y) < δ → abs (f x - f y) < ε
+
+def lipschitz (f : ℝ → ℝ) :=
+  ∃ L, ∀ x y, abs (f x - f y) ≤ L * abs (x - y)
+
+-- 15
+theorem uniform_continuous_of_lipschitz {f} (hf : lipschitz f) :
+  uniform_continuous f :=
+begin
+  intros ε hε,
+  rcases hf with ⟨L,hfl⟩,
+  use ε/(L+1),
+  have fs := abs_nonneg (f 1 - f 0),
+  have nhfl := hfl 1 0,
+  simp at nhfl,
+  have hs : 0 ≤ L := by linarith,
+  have hsl : 0 < L + 1 := by linarith,
+  have sf := div_pos hε hsl,
+  refine ⟨sf,_⟩,
+   { intros x y hxy,
+     specialize hfl x y,
+     have sd := le_of_lt hxy,
+     calc abs (f x - f y) ≤ L * abs (x - y) : hfl
+                      ... ≤ L * (ε / (L + 1) ) : mul_le_mul (by refl) sd (abs_nonneg _) hs
+                      ... < (L+1) * (ε / (L+1)) : by linarith
+                      ... = ε * (L+1)/(L+1) : by ring_nf
+                      ... = ε * ((L+1) * (L+1)⁻¹) : by ring_nf
+                      ... = ε * 1 : by { refine congr rfl _, refine div_self _, linarith }
+                      ... = ε : mul_one _,
+      },
+end
+
+def bounded' (x : ℕ → ℝ) :=
+  ∃ B, ∀ n, abs (x n) ≤ B
+
+-- 16
+theorem exercise_1p13 (x y : ℕ → ℝ) (h₁ : lim_to_inf x 0)
+  (h₂ : bounded' y) : lim_to_inf (λ n, x n * y n) 0 :=
+begin
+  intros ε hε,
+  cases h₂ with B hB,
+  have nh2 := hB 0,
+  have pre := abs_nonneg (y 0),
+  have nhN : 0 ≤ B := by linarith,
+  have prepre := le_of_lt hε,
+  have nhN1 : 0 < B+1 := by linarith,
+  have pren : ε / (B+1) > 0 := by linarith [div_pos hε nhN1],
+  rcases h₁ (ε / (B + 1)) (by linarith) with ⟨N,hN⟩,
+  use N,
+  intros n hn,
+  simp at *,
+  specialize hN n hn,
+  specialize hB n,
+  have nb1 : abs (y n) < B + 1 := by linarith,
+  have fs : B < B + 1 := by linarith,
+  have nb2 := mul_lt_mul'' hN fs (abs_nonneg _) (by linarith),
+  calc abs (x n * y n) = abs (x n) * abs (y n) : abs_mul _ _
+                   ... ≤ abs (x n) * B : mul_le_mul (by refl) hB (abs_nonneg _) (abs_nonneg _)
+                   ... < (ε / (B+1)) * (B+1) : nb2
+                   ... = ε * (B+1)/(B+1) : by ring_nf
+                   ... = ε * ((B+1)*(B+1)⁻¹) : by ring_nf
+                   ... = ε *1 : by { refine congr rfl _, refine div_self _, linarith }
+                   ... = ε : mul_one _,
 end
